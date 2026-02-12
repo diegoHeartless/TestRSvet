@@ -1,0 +1,63 @@
+# Игнорируем файлы при сборке Docker образа
+# (так как сборка идет из Git, эти файлы не будут скопированы)
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+!README.md
+
+# Scripts (не нужны в образе)
+*.bat
+*.sh
+!build-docker.sh
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Test
+src/test/
+
+# Other
+*.swp
+*.swo
+*~

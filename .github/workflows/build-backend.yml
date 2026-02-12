@@ -14,38 +14,27 @@ on:
     paths:
       - 'backend/**'
   workflow_dispatch:
-    inputs:
-      commit_hash:
-        description: 'Commit hash to build (leave empty for latest)'
-        required: false
-        type: string
-      branch:
-        description: 'Branch name'
-        required: false
-        default: 'main'
-        type: string
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/catalog-backend
+  BACKEND_IMAGE: ${{ github.repository }}/catalog-backend
 
 jobs:
-  build:
+  build-backend:
+    name: Build Backend Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Полная история для работы с коммитами
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
@@ -53,57 +42,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        run: |
-          if [ -n "${{ github.event.inputs.commit_hash }}" ]; then
-            COMMIT_HASH="${{ github.event.inputs.commit_hash }}"
-          else
-            COMMIT_HASH="${{ github.sha }}"
-          fi
-          
-          SHORT_COMMIT=$(echo $COMMIT_HASH | cut -c1-7)
-          BRANCH="${{ github.event.inputs.branch || github.ref_name }}"
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          
-          echo "commit=$COMMIT_HASH" >> $GITHUB_OUTPUT
-          echo "short_commit=$SHORT_COMMIT" >> $GITHUB_OUTPUT
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "repo_url=${{ github.server_url }}/${{ github.repository }}" >> $GITHUB_OUTPUT
-          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
-          
-          echo "Building for commit: $COMMIT_HASH ($SHORT_COMMIT) on branch: $BRANCH"
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build Docker image
-        id: build
+      - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:latest
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:${{ steps.meta.outputs.short_commit }}
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:${{ steps.meta.outputs.branch }}
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:${{ github.run_number }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
           build-args: |
-            GIT_REPO_URL=${{ steps.meta.outputs.repo_url }}.git
-            GIT_COMMIT=${{ steps.meta.outputs.commit }}
-            GIT_BRANCH=${{ steps.meta.outputs.branch }}
+            GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          labels: |
-            org.opencontainers.image.title=Catalog Backend
-            org.opencontainers.image.description=REST API for product catalog management
-            org.opencontainers.image.version=${{ steps.meta.outputs.short_commit }}
-            org.opencontainers.image.revision=${{ steps.meta.outputs.commit }}
-            org.opencontainers.image.source=${{ steps.meta.outputs.repo_url }}
-
-      - name: Image digest
-        if: github.event_name != 'pull_request'
-        run: |
-          if [ -n "${{ steps.build.outputs.digest }}" ]; then
-            echo "Image pushed with digest: ${{ steps.build.outputs.digest }}"
-          else
-            echo "Image digest not available"
-          fi

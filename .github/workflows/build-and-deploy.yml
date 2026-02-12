@@ -15,79 +15,53 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}/catalog-backend
 
 jobs:
   build-backend:
+    name: Build Backend Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version
-        id: version
-        run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            VERSION="${{ github.event.inputs.tag }}"
-          elif [ -n "${{ github.ref }}" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/}"
-          else
-            VERSION="latest"
-          fi
-          
-          COMMIT_HASH="${{ github.sha }}"
-          SHORT_COMMIT=$(echo $COMMIT_HASH | cut -c1-7)
-          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "commit=$COMMIT_HASH" >> $GITHUB_OUTPUT
-          echo "short_commit=$SHORT_COMMIT" >> $GITHUB_OUTPUT
-          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
-          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
-          
-          echo "Building version: $VERSION"
-          echo "Commit: $COMMIT_HASH ($SHORT_COMMIT)"
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
-        id: build
+      - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ steps.version.outputs.repo_lower }}/catalog-backend:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/${{ steps.version.outputs.repo_lower }}/catalog-backend:${{ steps.version.outputs.short_commit }}
-            ${{ env.REGISTRY }}/${{ steps.version.outputs.repo_lower }}/catalog-backend:latest
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
           build-args: |
             GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
-            GIT_COMMIT=${{ steps.version.outputs.commit }}
+            GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          labels: |
-            org.opencontainers.image.title=Catalog Backend
-            org.opencontainers.image.description=REST API for product catalog management
-            org.opencontainers.image.version=${{ steps.version.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.created=${{ steps.version.outputs.build_date }}
-
-      - name: Output image digest
-        run: echo "Image pushed with digest: ${{ steps.build.outputs.digest }}"
