@@ -67,5 +67,6 @@ jobs:
             GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
+            BUILD_DATE=${{ steps.meta-backend.outputs.created }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

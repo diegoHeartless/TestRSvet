@@ -68,6 +68,10 @@ jobs:
             type=raw,value=${{ steps.verify.outputs.short_commit }}
             type=raw,value=commit-${{ steps.verify.outputs.short_commit }}
 
+      - name: Extract build date
+        id: build-date
+        run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
@@ -80,6 +84,7 @@ jobs:
             GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
             GIT_COMMIT=${{ steps.verify.outputs.commit }}
             GIT_BRANCH=${{ github.event.inputs.branch }}
+            BUILD_DATE=${{ steps.build-date.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

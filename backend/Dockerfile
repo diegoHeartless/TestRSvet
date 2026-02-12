@@ -39,9 +39,10 @@ WORKDIR /app
 # Добавляем метаданные о коммите
 ARG GIT_COMMIT=unknown
 ARG GIT_REPO_URL=unknown
+ARG BUILD_DATE=unknown
 LABEL git.commit=$GIT_COMMIT
 LABEL git.repo=$GIT_REPO_URL
-LABEL build.date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+LABEL build.date=$BUILD_DATE
 
 # Копируем собранный JAR
 COPY --from=build /app/backend/target/*.jar app.jar
