@@ -1,0 +1,403 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}/catalog-backend
+  FRONTEND_IMAGE: ${{ github.repository }}/catalog-frontend
+
+jobs:
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          build-args: |
+            GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
+            BUILD_DATE=${{ steps.meta-backend.outputs.created }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL || 'http://localhost:8080/api' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to VDS
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VDS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VDS_HOST }}
+          username: ${{ secrets.VDS_USER }}
+          key: ${{ secrets.VDS_SSH_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 10m
+          script: |
+            # Проверка и установка необходимых инструментов
+            echo "🔍 Checking required tools..."
+            
+            # Проверка git
+            if ! command -v git &> /dev/null; then
+              echo "📦 Installing git..."
+              if command -v apt-get &> /dev/null; then
+                sudo apt-get update
+                sudo apt-get install -y git
+              elif command -v yum &> /dev/null; then
+                sudo yum install -y git
+              else
+                echo "❌ Error: Cannot install git. Please install it manually."
+                exit 1
+              fi
+            fi
+            
+            # Проверка и установка Docker
+            if ! command -v docker &> /dev/null; then
+              echo "📦 Installing Docker..."
+              if command -v apt-get &> /dev/null; then
+                # Установка Docker для Ubuntu/Debian
+                sudo apt-get update
+                sudo apt-get install -y ca-certificates curl
+                sudo install -m 0755 -d /etc/apt/keyrings
+                sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+                sudo chmod a+r /etc/apt/keyrings/docker.asc
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                sudo apt-get update
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                sudo usermod -aG docker $USER
+                sudo systemctl start docker
+                sudo systemctl enable docker
+                echo "⚠️  Note: Docker group will be active after re-login. Using sudo for docker commands."
+              elif command -v yum &> /dev/null; then
+                # Установка Docker для CentOS/RHEL
+                sudo yum install -y yum-utils
+                sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+                sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                sudo systemctl start docker
+                sudo systemctl enable docker
+                sudo usermod -aG docker $USER
+              else
+                echo "❌ Error: Cannot auto-install Docker on this system. Please install Docker manually."
+                exit 1
+              fi
+              echo "✅ Docker installed successfully"
+            fi
+            
+            # Проверка что Docker работает
+            DOCKER_CMD="docker"
+            if ! docker ps &> /dev/null; then
+              if sudo docker ps &> /dev/null; then
+                DOCKER_CMD="sudo docker"
+                echo "ℹ️  Using sudo for docker commands"
+              else
+                echo "❌ Error: Docker is not accessible. Please check Docker installation."
+                exit 1
+              fi
+            fi
+            
+            # Проверка docker-compose
+            if ! command -v docker-compose &> /dev/null && ! $DOCKER_CMD compose version &> /dev/null; then
+              echo "⚠️  Warning: docker-compose not found. Trying to use 'docker compose' (plugin version)..."
+              if ! $DOCKER_CMD compose version &> /dev/null; then
+                echo "❌ Error: Docker Compose is not available. Please install it manually."
+                exit 1
+              fi
+            fi
+            
+            # Экспортировать команду docker для использования в скрипте
+            export DOCKER_CMD="$DOCKER_CMD"
+            
+            echo "✅ All required tools are installed"
+            
+            # Создать директорию если её нет
+            if [ ! -d "/opt/catalog" ]; then
+              echo "📁 Creating /opt/catalog directory..."
+              sudo mkdir -p /opt/catalog
+              sudo chown $USER:$USER /opt/catalog
+            fi
+            
+            # Перейти в директорию
+            cd /opt/catalog || exit 1
+            
+            # Если репозиторий еще не клонирован, клонировать его
+            if [ ! -d ".git" ]; then
+              echo "📥 Cloning repository..."
+              REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+              GITHUB_AUTH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+              
+              if [ -n "$GITHUB_AUTH_TOKEN" ]; then
+                git clone https://x-access-token:${GITHUB_AUTH_TOKEN}@github.com/${{ github.repository }}.git . || {
+                  echo "❌ Error: Failed to clone repository with token."
+                  exit 1
+                }
+                git remote set-url origin https://github.com/${{ github.repository }}.git
+              else
+                echo "⚠️  Warning: No GitHub token available. Trying public clone..."
+                git clone https://github.com/${{ github.repository }}.git . || {
+                  echo "❌ Error: Failed to clone repository."
+                  exit 1
+                }
+              fi
+            else
+              echo "🔄 Updating repository..."
+              GITHUB_AUTH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+              
+              if [ -n "$GITHUB_AUTH_TOKEN" ]; then
+                git remote set-url origin https://x-access-token:${GITHUB_AUTH_TOKEN}@github.com/${{ github.repository }}.git
+                git fetch origin 2>/dev/null
+                git reset --hard origin/main 2>/dev/null || git reset --hard origin/${{ github.ref_name }} 2>/dev/null || {
+                  echo "⚠️  Warning: Failed to update repository. Continuing with existing files..."
+                }
+                git remote set-url origin https://github.com/${{ github.repository }}.git
+              else
+                git fetch origin 2>/dev/null && git reset --hard origin/main || {
+                  echo "⚠️  Warning: Failed to update repository. Continuing with existing files..."
+                }
+              fi
+            fi
+            
+            # Преобразуем имя репозитория в lowercase для GHCR
+            GITHUB_REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            
+            # Определяем теги образов (используем latest для main ветки)
+            export GHCR_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            export GITHUB_REPOSITORY="${{ github.repository }}"
+            
+            # Экспортировать имена образов в lowercase (GHCR требует lowercase)
+            export GHCR_IMAGE_BACKEND="ghcr.io/${GITHUB_REPO_LOWER}/catalog-backend:latest"
+            export GHCR_IMAGE_FRONTEND="ghcr.io/${GITHUB_REPO_LOWER}/catalog-frontend:latest"
+            
+            # Переменные окружения для базы данных
+            export POSTGRES_DB="${POSTGRES_DB:-catalog_db}"
+            export POSTGRES_USER="${POSTGRES_USER:-catalog_user}"
+            export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-catalog_password}"
+            
+            # SSL настройки из Secrets
+            if [ -z "${{ secrets.SSL_ENABLED }}" ]; then
+                export SSL_ENABLED="false"
+            else
+                export SSL_ENABLED="${{ secrets.SSL_ENABLED }}"
+            fi
+            export SSL_DOMAIN="${{ secrets.SSL_DOMAIN }}"
+            export SSL_EMAIL="${{ secrets.SSL_EMAIL }}"
+            export SSL_CERT_PATH="/opt/catalog/ssl"
+            
+            # API URL для фронтенда
+            export VITE_API_URL="${{ secrets.VITE_API_URL }}"
+            if [ -z "$VITE_API_URL" ]; then
+              if [ "$SSL_ENABLED" = "true" ] && [ -n "$SSL_DOMAIN" ]; then
+                export VITE_API_URL="https://${SSL_DOMAIN}/api"
+              else
+                export VITE_API_URL="http://${{ secrets.VDS_HOST }}/api"
+              fi
+            fi
+            
+            # Backend настройки
+            export BACKEND_PORT="${BACKEND_PORT:-8080}"
+            export FRONTEND_PORT="${FRONTEND_PORT:-80}"
+            export DB_HOST="${DB_HOST:-postgres}"
+            export DB_PORT="${DB_PORT:-5432}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export JWT_EXPIRATION="${JWT_EXPIRATION:-86400000}"
+            
+            echo "🔐 SSL configuration:"
+            echo "   SSL_ENABLED=${SSL_ENABLED}"
+            echo "   SSL_DOMAIN=${SSL_DOMAIN:-not set}"
+            echo "   SSL_EMAIL=${SSL_EMAIL:-not set}"
+            echo ""
+            echo "🌐 Application configuration:"
+            echo "   VITE_API_URL=${VITE_API_URL}"
+            echo "   BACKEND_PORT=${BACKEND_PORT}"
+            echo "   FRONTEND_PORT=${FRONTEND_PORT}"
+            echo ""
+            echo "🗄️  Database configuration:"
+            echo "   POSTGRES_DB=${POSTGRES_DB}"
+            echo "   POSTGRES_USER=${POSTGRES_USER}"
+            echo "   POSTGRES_PASSWORD=${POSTGRES_PASSWORD:+***set***}"
+            
+            # Проверка наличия GHCR_TOKEN
+            if [ -z "$GHCR_TOKEN" ]; then
+              echo "⚠️  Warning: GHCR_TOKEN is empty. Make sure it's set in GitHub Secrets."
+            else
+              echo "✅ GHCR_TOKEN is set"
+            fi
+            
+            # Логин в GHCR
+            echo "🔐 Logging in to GitHub Container Registry..."
+            echo "$GHCR_TOKEN" | $DOCKER_CMD login ghcr.io -u ${{ github.actor }} --password-stdin || {
+              echo "❌ Error: Failed to login to GHCR"
+              exit 1
+            }
+            
+            # Настройка SSL если включен
+            if [ "$SSL_ENABLED" = "true" ] && [ -n "$SSL_DOMAIN" ]; then
+              echo "🔒 SSL is enabled for domain: $SSL_DOMAIN"
+              
+              # Создать директорию для SSL сертификатов
+              mkdir -p "$SSL_CERT_PATH"
+              
+              # Проверка наличия certbot
+              if ! command -v certbot &> /dev/null; then
+                echo "📦 Installing certbot..."
+                if command -v apt-get &> /dev/null; then
+                  sudo apt-get update
+                  sudo apt-get install -y certbot
+                elif command -v yum &> /dev/null; then
+                  sudo yum install -y certbot
+                fi
+              fi
+              
+              # Получение сертификата если его нет
+              if [ ! -f "$SSL_CERT_PATH/fullchain.pem" ] || [ ! -f "$SSL_CERT_PATH/privkey.pem" ]; then
+                echo "📜 Obtaining SSL certificate..."
+                if [ -n "$SSL_EMAIL" ]; then
+                  sudo certbot certonly --standalone -d "$SSL_DOMAIN" --email "$SSL_EMAIL" --agree-tos --non-interactive || {
+                    echo "⚠️  Warning: Failed to obtain SSL certificate. Continuing without SSL..."
+                    export SSL_ENABLED="false"
+                  }
+                  
+                  # Копируем сертификаты в нужную директорию
+                  if [ -f "/etc/letsencrypt/live/$SSL_DOMAIN/fullchain.pem" ]; then
+                    sudo cp /etc/letsencrypt/live/$SSL_DOMAIN/fullchain.pem "$SSL_CERT_PATH/"
+                    sudo cp /etc/letsencrypt/live/$SSL_DOMAIN/privkey.pem "$SSL_CERT_PATH/"
+                    sudo chown -R $USER:$USER "$SSL_CERT_PATH"
+                  fi
+                else
+                  echo "⚠️  Warning: SSL_EMAIL not set. Cannot obtain certificate automatically."
+                  export SSL_ENABLED="false"
+                fi
+              else
+                echo "✅ SSL certificates already exist"
+              fi
+            else
+              echo "ℹ️  SSL is disabled"
+              export SSL_ENABLED="false"
+            fi
+            
+            # Запустить docker-compose
+            echo "🚀 Starting services with docker-compose..."
+            COMPOSE_CMD="docker-compose"
+            if ! command -v docker-compose &> /dev/null; then
+              COMPOSE_CMD="$DOCKER_CMD compose"
+            fi
+            
+            # Определяем профили для docker-compose
+            COMPOSE_PROFILES=""
+            if [ "$SSL_ENABLED" = "true" ]; then
+              COMPOSE_PROFILES="--profile ssl"
+            fi
+            
+            $COMPOSE_CMD -f docker-compose.prod.yml pull
+            $COMPOSE_CMD -f docker-compose.prod.yml $COMPOSE_PROFILES up -d
+            
+            # Проверка статуса
+            echo "⏳ Waiting for services to start..."
+            sleep 5
+            
+            echo "📊 Service status:"
+            $COMPOSE_CMD -f docker-compose.prod.yml ps
+            
+            echo "✅ Deployment completed successfully!"
