@@ -53,10 +53,12 @@ jobs:
           
           COMMIT_HASH="${{ github.sha }}"
           SHORT_COMMIT=$(echo $COMMIT_HASH | cut -c1-7)
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "commit=$COMMIT_HASH" >> $GITHUB_OUTPUT
           echo "short_commit=$SHORT_COMMIT" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
           
           echo "Building version: $VERSION"
           echo "Commit: $COMMIT_HASH ($SHORT_COMMIT)"
@@ -84,7 +86,7 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            org.opencontainers.image.created=${{ steps.version.outputs.build_date }}
 
       - name: Output image digest
         run: echo "Image pushed with digest: ${{ steps.build.outputs.digest }}"

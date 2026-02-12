@@ -73,6 +73,7 @@ jobs:
           echo "Building for commit: $COMMIT_HASH ($SHORT_COMMIT) on branch: $BRANCH"
 
       - name: Build Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./backend
