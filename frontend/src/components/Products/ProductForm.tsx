@@ -1,4 +1,4 @@
-import { Form, Input, InputNumber, Select, Button, Card, Switch } from 'antd'
+import { Form, Input, InputNumber, Select, Button, Card, Switch, Spin } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useProduct, useCreateProduct, useUpdateProduct } from '../../hooks/useProducts'
@@ -53,12 +53,12 @@ const ProductForm = () => {
 
   return (
     <Card title={isEdit ? 'Редактирование продукта' : 'Создание продукта'}>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        loading={isLoadingProduct}
-      >
+      <Spin spinning={isLoadingProduct}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={onFinish}
+        >
         <Form.Item
           name="name"
           label="Название"
@@ -121,6 +121,7 @@ const ProductForm = () => {
           </Button>
         </Form.Item>
       </Form>
+      </Spin>
     </Card>
   )
 }

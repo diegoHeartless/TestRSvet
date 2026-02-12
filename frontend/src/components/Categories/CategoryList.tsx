@@ -1,4 +1,4 @@
-import { Table, Card, Button, Space, Tag } from 'antd'
+import { Table, Card, Button, Space } from 'antd'
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useCategories, useDeleteCategory } from '../../hooks/useCategories'

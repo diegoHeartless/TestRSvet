@@ -1,4 +1,4 @@
-import { Form, Input, Button, Card } from 'antd'
+import { Form, Input, Button, Card, Spin } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useCategory, useCreateCategory, useUpdateCategory } from '../../hooks/useCategories'
@@ -47,12 +47,12 @@ const CategoryForm = () => {
 
   return (
     <Card title={isEdit ? 'Редактирование категории' : 'Создание категории'}>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        loading={isLoadingCategory}
-      >
+      <Spin spinning={isLoadingCategory}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={onFinish}
+        >
         <Form.Item
           name="name"
           label="Название"
@@ -74,6 +74,7 @@ const CategoryForm = () => {
           </Button>
         </Form.Item>
       </Form>
+      </Spin>
     </Card>
   )
 }
