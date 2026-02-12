@@ -65,8 +65,8 @@ jobs:
           echo "Commit: $COMMIT_HASH ($SHORT_COMMIT)"
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
         id: build
+        uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -91,20 +91,3 @@ jobs:
 
       - name: Output image digest
         run: echo "Image pushed with digest: ${{ steps.build.outputs.digest }}"
-
-  # Опционально: деплой на сервер
-  # deploy:
-  #   needs: build-backend
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   steps:
-  #     - name: Deploy to server
-  #       uses: appleboy/ssh-action@master
-  #       with:
-  #         host: ${{ secrets.SERVER_HOST }}
-  #         username: ${{ secrets.SERVER_USER }}
-  #         key: ${{ secrets.SERVER_SSH_KEY }}
-  #         script: |
-  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-  #           docker-compose -f /path/to/docker-compose.yml pull
-  #           docker-compose -f /path/to/docker-compose.yml up -d
