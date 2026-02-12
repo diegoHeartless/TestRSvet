@@ -15,7 +15,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/catalog-backend
 
 jobs:
   build:
@@ -45,6 +44,7 @@ jobs:
         id: verify
         run: |
           COMMIT_HASH="${{ github.event.inputs.commit_hash }}"
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           
           # Проверяем, существует ли коммит
           if git rev-parse --verify "$COMMIT_HASH" >/dev/null 2>&1; then
@@ -52,6 +52,7 @@ jobs:
             SHORT_COMMIT=$(echo $FULL_COMMIT | cut -c1-7)
             echo "commit=$FULL_COMMIT" >> $GITHUB_OUTPUT
             echo "short_commit=$SHORT_COMMIT" >> $GITHUB_OUTPUT
+            echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
             echo "Commit found: $FULL_COMMIT ($SHORT_COMMIT)"
           else
             echo "Error: Commit $COMMIT_HASH not found"
@@ -65,8 +66,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.verify.outputs.short_commit }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:commit-${{ steps.verify.outputs.short_commit }}
+            ${{ env.REGISTRY }}/${{ steps.verify.outputs.repo_lower }}/catalog-backend:${{ steps.verify.outputs.short_commit }}
+            ${{ env.REGISTRY }}/${{ steps.verify.outputs.repo_lower }}/catalog-backend:commit-${{ steps.verify.outputs.short_commit }}
           build-args: |
             GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
             GIT_COMMIT=${{ steps.verify.outputs.commit }}
@@ -83,5 +84,5 @@ jobs:
       - name: Output image info
         run: |
           echo "Image built and pushed:"
-          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.verify.outputs.short_commit }}"
-          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:commit-${{ steps.verify.outputs.short_commit }}"
+          echo "  - ${{ env.REGISTRY }}/${{ steps.verify.outputs.repo_lower }}/catalog-backend:${{ steps.verify.outputs.short_commit }}"
+          echo "  - ${{ env.REGISTRY }}/${{ steps.verify.outputs.repo_lower }}/catalog-backend:commit-${{ steps.verify.outputs.short_commit }}"

@@ -15,7 +15,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/catalog-backend
 
 jobs:
   build-backend:
@@ -54,11 +53,13 @@ jobs:
           COMMIT_HASH="${{ github.sha }}"
           SHORT_COMMIT=$(echo $COMMIT_HASH | cut -c1-7)
           BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "commit=$COMMIT_HASH" >> $GITHUB_OUTPUT
           echo "short_commit=$SHORT_COMMIT" >> $GITHUB_OUTPUT
           echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
           
           echo "Building version: $VERSION"
           echo "Commit: $COMMIT_HASH ($SHORT_COMMIT)"
@@ -71,9 +72,9 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.short_commit }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.version.outputs.repo_lower }}/catalog-backend:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.version.outputs.repo_lower }}/catalog-backend:${{ steps.version.outputs.short_commit }}
+            ${{ env.REGISTRY }}/${{ steps.version.outputs.repo_lower }}/catalog-backend:latest
           build-args: |
             GIT_REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
             GIT_COMMIT=${{ steps.version.outputs.commit }}

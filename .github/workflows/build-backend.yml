@@ -27,7 +27,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/catalog-backend
+  IMAGE_NAME: ${{ github.repository_owner }}/catalog-backend
 
 jobs:
   build:
@@ -64,11 +64,13 @@ jobs:
           
           SHORT_COMMIT=$(echo $COMMIT_HASH | cut -c1-7)
           BRANCH="${{ github.event.inputs.branch || github.ref_name }}"
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           
           echo "commit=$COMMIT_HASH" >> $GITHUB_OUTPUT
           echo "short_commit=$SHORT_COMMIT" >> $GITHUB_OUTPUT
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
           echo "repo_url=${{ github.server_url }}/${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
           
           echo "Building for commit: $COMMIT_HASH ($SHORT_COMMIT) on branch: $BRANCH"
 
@@ -80,10 +82,10 @@ jobs:
           file: ./backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.short_commit }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.branch }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:latest
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:${{ steps.meta.outputs.short_commit }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:${{ steps.meta.outputs.branch }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lower }}/catalog-backend:${{ github.run_number }}
           build-args: |
             GIT_REPO_URL=${{ steps.meta.outputs.repo_url }}.git
             GIT_COMMIT=${{ steps.meta.outputs.commit }}
