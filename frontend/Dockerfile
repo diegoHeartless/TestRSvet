@@ -6,8 +6,8 @@ WORKDIR /app
 ARG VITE_API_URL=http://localhost:8080/api
 
 # Копируем package.json и устанавливаем зависимости
-COPY package*.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install --no-audit --no-fund
 
 # Копируем исходный код и собираем приложение
 COPY . .
