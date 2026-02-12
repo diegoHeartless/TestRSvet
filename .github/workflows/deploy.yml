@@ -127,8 +127,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.VDS_HOST }}" ]; then
+            echo "❌ Error: VDS_HOST secret is not set or empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VDS_USER }}" ]; then
+            echo "❌ Error: VDS_USER secret is not set or empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VDS_SSH_KEY }}" ]; then
+            echo "❌ Error: VDS_SSH_KEY secret is not set or empty"
+            exit 1
+          fi
+          echo "✅ All required secrets are set"
+          echo "VDS_HOST length: ${#VDS_HOST}"
+          echo "VDS_USER length: ${#VDS_USER}"
+          echo "VDS_SSH_KEY length: ${#VDS_SSH_KEY}"
+        env:
+          VDS_HOST: ${{ secrets.VDS_HOST }}
+          VDS_USER: ${{ secrets.VDS_USER }}
+          VDS_SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
+
       - name: Deploy to VDS
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VDS_HOST }}
           username: ${{ secrets.VDS_USER }}
