@@ -9,7 +9,7 @@ export const productsApi = {
    * Поиск продуктов с фильтрами
    */
   search: async (params: ProductSearchRequest): Promise<Product[]> => {
-    const response = await apiClient.get<Product[]>('/products/search', { params })
+    const response = await apiClient.get<Product[]>('products/search', { params })
     return response.data
   },
 
@@ -17,7 +17,7 @@ export const productsApi = {
    * Получить продукт по ID
    */
   getById: async (id: number): Promise<Product> => {
-    const response = await apiClient.get<Product>(`/products/${id}`)
+    const response = await apiClient.get<Product>(`products/${id}`)
     return response.data
   },
 
@@ -25,7 +25,7 @@ export const productsApi = {
    * Создать продукт
    */
   create: async (data: ProductCreateRequest): Promise<Product> => {
-    const response = await apiClient.post<Product>('/products', data)
+    const response = await apiClient.post<Product>('products', data)
     return response.data
   },
 
@@ -33,7 +33,7 @@ export const productsApi = {
    * Обновить продукт
    */
   update: async (id: number, data: ProductUpdateRequest): Promise<Product> => {
-    const response = await apiClient.put<Product>(`/products/${id}`, data)
+    const response = await apiClient.put<Product>(`products/${id}`, data)
     return response.data
   },
 
@@ -41,6 +41,6 @@ export const productsApi = {
    * Удалить продукт
    */
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/products/${id}`)
+    await apiClient.delete(`products/${id}`)
   },
 }

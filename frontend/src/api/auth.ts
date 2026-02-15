@@ -9,7 +9,7 @@ export const authApi = {
    * Авторизация пользователя
    */
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', credentials)
+    const response = await apiClient.post<AuthResponse>('auth/login', credentials)
     return response.data
   },
 }
