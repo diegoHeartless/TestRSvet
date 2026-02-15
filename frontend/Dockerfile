@@ -2,8 +2,8 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
-# Аргументы для сборки
-ARG VITE_API_URL=http://localhost:8080/api
+# Аргументы для сборки: /api = относительный путь (тот же хост), подходит для деплоя за nginx
+ARG VITE_API_URL=/api
 
 # Копируем package.json и устанавливаем зависимости
 COPY package.json ./

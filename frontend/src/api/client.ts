@@ -1,9 +1,10 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 
 /**
- * Базовый API клиент с настройкой interceptors
+ * Базовый API клиент с настройкой interceptors.
+ * В production (Docker) по умолчанию /api — запросы на тот же хост; в dev — localhost:8080.
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/api' : '/api')
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
