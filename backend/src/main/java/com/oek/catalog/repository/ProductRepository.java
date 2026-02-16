@@ -23,11 +23,12 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     
     List<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice);
     
-    @Query("SELECT p FROM Product p WHERE " +
-           "(:categoryId IS NULL OR p.category.id = :categoryId) AND " +
-           "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+    @Query(value = "SELECT p.* FROM products p " +
+           "WHERE (:categoryId IS NULL OR p.category_id = :categoryId) AND " +
+           "(:name IS NULL OR p.name ILIKE CONCAT('%', :name, '%')) AND " +
            "(:minPrice IS NULL OR p.price >= :minPrice) AND " +
-           "(:maxPrice IS NULL OR p.price <= :maxPrice)")
+           "(:maxPrice IS NULL OR p.price <= :maxPrice)",
+           nativeQuery = true)
     List<Product> searchProducts(
             @Param("categoryId") Long categoryId,
             @Param("name") String name,
