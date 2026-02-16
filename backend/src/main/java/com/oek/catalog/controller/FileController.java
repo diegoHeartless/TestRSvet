@@ -42,7 +42,11 @@ public class FileController {
     @Operation(summary = "Получить изображение продукта", description = "Публичный доступ")
     public ResponseEntity<Resource> getProductImage(@PathVariable String filename) {
         try {
+            // Поддержка и полного пути, и только имени файла
             Path filePath = fileStorageService.getFilePath("/api/files/products/" + filename);
+            if (filePath == null || !java.nio.file.Files.exists(filePath)) {
+                filePath = fileStorageService.getFilePath(filename);
+            }
             if (filePath == null || !java.nio.file.Files.exists(filePath)) {
                 return ResponseEntity.notFound().build();
             }

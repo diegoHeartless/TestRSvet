@@ -60,8 +60,8 @@ public class FileStorageService {
         }
 
         try {
-            // Создать директорию если не существует
-            Path uploadPath = Paths.get(uploadDir, "products");
+            // Создать директорию если не существует (используем абсолютный путь)
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize().resolve("products");
             Files.createDirectories(uploadPath);
 
             // Генерировать уникальное имя файла
@@ -112,9 +112,10 @@ public class FileStorageService {
     }
 
     /**
-     * Получить путь к файлу по URL
+     * Получить путь к файлу по URL или имени файла.
+     * Поддерживает полный URL (http://host/api/files/products/xxx.jpg), относительный путь (/api/files/products/xxx.jpg) или только имя файла.
      *
-     * @param imageUrl URL изображения
+     * @param imageUrl URL изображения или имя файла
      * @return путь к файлу
      */
     public Path getFilePath(String imageUrl) {
@@ -123,6 +124,17 @@ public class FileStorageService {
         }
 
         String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-        return Paths.get(uploadDir, "products", filename);
+        if (filename.isEmpty()) {
+            return null;
+        }
+
+        Path baseDir = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path filePath = baseDir.resolve("products").resolve(filename).normalize();
+
+        if (!filePath.startsWith(baseDir)) {
+            log.warn("Resolved path outside upload dir: {}", filePath);
+            return null;
+        }
+        return filePath;
     }
 }
