@@ -26,6 +26,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public List<ProductResponse> search(ProductSearchRequest request) {
@@ -104,6 +105,12 @@ public class ProductService {
     public void delete(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
+        
+        // Удалить изображение если есть
+        if (product.getImageUrl() != null && !product.getImageUrl().isEmpty()) {
+            fileStorageService.deleteProductImage(product.getImageUrl());
+        }
+        
         productRepository.delete(product);
     }
 

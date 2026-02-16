@@ -45,6 +45,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/files/products/upload").hasRole("ADMIN") // Загрузка только для ADMIN
+                        .requestMatchers("/api/files/products/**").permitAll() // Публичный доступ к изображениям продуктов
                         .requestMatchers("/api/categories/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/products/**").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()

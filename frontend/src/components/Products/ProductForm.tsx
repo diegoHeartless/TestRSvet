@@ -1,9 +1,12 @@
-import { Form, Input, InputNumber, Select, Button, Card, Switch, Spin } from 'antd'
+import { Form, Input, InputNumber, Select, Button, Card, Switch, Spin, Upload, message } from 'antd'
+import { UploadOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useProduct, useCreateProduct, useUpdateProduct } from '../../hooks/useProducts'
 import { useCategories } from '../../hooks/useCategories'
 import { ProductCreateRequest, ProductUpdateRequest } from '../../types/product'
+import { filesApi } from '../../api/files'
+import type { UploadFile } from 'antd/es/upload/interface'
 
 /**
  * Форма создания/редактирования продукта
@@ -13,6 +16,8 @@ const ProductForm = () => {
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id
   const [form] = Form.useForm()
+  const [uploading, setUploading] = useState(false)
+  const [fileList, setFileList] = useState<UploadFile[]>([])
 
   const { data: product, isLoading: isLoadingProduct } = useProduct(Number(id))
   const { data: categories } = useCategories()
@@ -29,8 +34,64 @@ const ProductForm = () => {
         categoryId: product.categoryId,
         status: product.status,
       })
+      
+      // Установить изображение в Upload если есть
+      if (product.imageUrl) {
+        setFileList([
+          {
+            uid: '-1',
+            name: 'image',
+            status: 'done',
+            url: product.imageUrl,
+          },
+        ])
+      }
     }
   }, [product, isEdit, form])
+
+  const handleUpload = async (file: File): Promise<string> => {
+    setUploading(true)
+    try {
+      const imageUrl = await filesApi.uploadProductImage(file)
+      form.setFieldsValue({ imageUrl })
+      message.success('Изображение загружено успешно')
+      setUploading(false)
+      return imageUrl
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Ошибка при загрузке изображения')
+      setUploading(false)
+      throw error
+    }
+  }
+
+  const beforeUpload = (file: File) => {
+    const isImage = file.type.startsWith('image/')
+    if (!isImage) {
+      message.error('Можно загружать только изображения!')
+      return false
+    }
+    const isLt5M = file.size / 1024 / 1024 < 5
+    if (!isLt5M) {
+      message.error('Изображение должно быть меньше 5MB!')
+      return false
+    }
+    return true
+  }
+
+  const handleChange = (info: any) => {
+    if (info.file.status === 'uploading') {
+      setUploading(true)
+      return
+    }
+    if (info.file.status === 'done') {
+      setFileList([info.file])
+      setUploading(false)
+    }
+    if (info.file.status === 'error') {
+      message.error('Ошибка при загрузке изображения')
+      setUploading(false)
+    }
+  }
 
   const onFinish = (values: ProductCreateRequest | ProductUpdateRequest) => {
     if (isEdit) {
@@ -88,8 +149,41 @@ const ProductForm = () => {
           />
         </Form.Item>
 
-        <Form.Item name="imageUrl" label="URL изображения">
-          <Input placeholder="https://example.com/image.jpg" />
+        <Form.Item label="Изображение">
+          <Upload
+            name="file"
+            listType="picture-card"
+            fileList={fileList}
+            beforeUpload={beforeUpload}
+            customRequest={async ({ file, onSuccess, onError }) => {
+              try {
+                const imageUrl = await handleUpload(file as File)
+                onSuccess?.(imageUrl)
+              } catch (error) {
+                onError?.(error as Error)
+              }
+            }}
+            onChange={handleChange}
+            onRemove={() => {
+              setFileList([])
+              form.setFieldsValue({ imageUrl: null })
+            }}
+            maxCount={1}
+            accept="image/*"
+          >
+            {fileList.length === 0 && (
+              <div>
+                <UploadOutlined />
+                <div style={{ marginTop: 8 }}>Загрузить</div>
+              </div>
+            )}
+          </Upload>
+          <div style={{ marginTop: 8, color: '#999', fontSize: '12px' }}>
+            Или введите URL вручную:
+          </div>
+          <Form.Item name="imageUrl" noStyle>
+            <Input placeholder="https://example.com/image.jpg" style={{ marginTop: 8 }} />
+          </Form.Item>
         </Form.Item>
 
         <Form.Item
