@@ -84,11 +84,13 @@ const ProductList = () => {
           {
             title: 'Действия',
             key: 'actions',
-            width: 120,
+            width: 180,
+            fixed: 'right' as const,
             render: (_: any, record: Product) => (
-              <Space>
+              <Space size="small">
                 <Button
                   type="link"
+                  size="small"
                   icon={<EditOutlined />}
                   onClick={() => navigate(`/admin/products/${record.id}`)}
                 >
@@ -97,6 +99,7 @@ const ProductList = () => {
                 <Button
                   type="link"
                   danger
+                  size="small"
                   icon={<DeleteOutlined />}
                   onClick={() => handleDelete(record.id)}
                 >
@@ -127,6 +130,7 @@ const ProductList = () => {
         loading={isLoading}
         rowKey="id"
         pagination={{ pageSize: 10 }}
+        scroll={{ x: 1200 }}
       />
     </Card>
   )

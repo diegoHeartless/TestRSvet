@@ -28,13 +28,12 @@ const ProductFilters = ({ filters, onFiltersChange, categories }: ProductFilters
     <Card size="small" style={{ marginBottom: '16px' }}>
       <Form
         form={form}
-        layout="inline"
+        layout="vertical"
         onFinish={handleSearch}
         initialValues={filters}
-        style={{ width: '100%' }}
       >
-        <Row gutter={16} style={{ width: '100%' }}>
-          <Col span={6}>
+        <Row gutter={16} align="bottom">
+          <Col xs={24} sm={12} md={6}>
             <Form.Item name="categoryId" label="Категория">
               <Select
                 placeholder="Выберите категорию"
@@ -49,24 +48,24 @@ const ProductFilters = ({ filters, onFiltersChange, categories }: ProductFilters
               </Select>
             </Form.Item>
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} md={6}>
             <Form.Item name="name" label="Название">
               <Input placeholder="Поиск по названию" />
             </Form.Item>
           </Col>
-          <Col span={4}>
+          <Col xs={12} sm={6} md={4}>
             <Form.Item name="minPrice" label="Цена от">
               <InputNumber placeholder="0" min={0} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
-          <Col span={4}>
+          <Col xs={12} sm={6} md={4}>
             <Form.Item name="maxPrice" label="Цена до">
               <InputNumber placeholder="∞" min={0} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
-          <Col span={4}>
-            <Form.Item>
-              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+          <Col xs={24} sm={24} md={4}>
+            <Form.Item label=" ">
+              <Button type="primary" htmlType="submit" icon={<SearchOutlined />} block>
                 Поиск
               </Button>
             </Form.Item>
@@ -74,7 +73,7 @@ const ProductFilters = ({ filters, onFiltersChange, categories }: ProductFilters
         </Row>
         <Row>
           <Col>
-            <Button type="link" onClick={handleReset}>
+            <Button type="link" onClick={handleReset} style={{ paddingLeft: 0 }}>
               Сбросить фильтры
             </Button>
           </Col>
