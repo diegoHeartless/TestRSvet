@@ -8,6 +8,7 @@ import ProductFilters from './ProductFilters'
 import { Product } from '../../types/product'
 import { useAuth } from '../../hooks/useAuth'
 import { ProductSearchRequest } from '../../types/product'
+import { getProductImageUrl } from '../../api/files'
 
 /**
  * Компонент списка продуктов
@@ -36,8 +37,10 @@ const ProductList = () => {
       dataIndex: 'imageUrl',
       key: 'imageUrl',
       width: 80,
-      render: (url: string) =>
-        url ? <Image src={url} alt="" width={56} height={56} style={{ objectFit: 'cover' }} /> : '-',
+      render: (url: string) => {
+        const imageUrl = getProductImageUrl(url)
+        return imageUrl ? <Image src={imageUrl} alt="" width={56} height={56} style={{ objectFit: 'cover' }} /> : '-'
+      },
     },
     {
       title: 'Продукт',

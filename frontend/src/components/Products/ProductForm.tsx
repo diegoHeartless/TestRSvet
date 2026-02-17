@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useProduct, useCreateProduct, useUpdateProduct } from '../../hooks/useProducts'
 import { useCategories } from '../../hooks/useCategories'
 import { ProductCreateRequest, ProductUpdateRequest } from '../../types/product'
-import { filesApi } from '../../api/files'
+import { filesApi, getProductImageUrl } from '../../api/files'
 import type { UploadFile } from 'antd/es/upload/interface'
 
 /**
@@ -37,12 +37,13 @@ const ProductForm = () => {
       
       // Установить изображение в Upload если есть
       if (product.imageUrl) {
+        const imageUrl = getProductImageUrl(product.imageUrl)
         setFileList([
           {
             uid: '-1',
             name: 'image',
             status: 'done',
-            url: product.imageUrl,
+            url: imageUrl || product.imageUrl,
           },
         ])
       }
