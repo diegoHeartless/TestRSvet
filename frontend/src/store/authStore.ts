@@ -1,49 +1,76 @@
 import { User } from '../types/auth'
 
 /**
- * Простое хранилище состояния авторизации
+ * Состояние пользователя (хранится в замыкании)
  */
-class AuthStore {
-  private user: User | null = null
+let user: User | null = null
 
-  constructor() {
-    // Восстанавливаем пользователя из localStorage при инициализации
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      try {
-        this.user = JSON.parse(storedUser)
-      } catch (e) {
-        console.error('Failed to parse user from localStorage', e)
-        localStorage.removeItem('user')
-      }
-    }
-  }
-
-  setUser(user: User | null) {
-    this.user = user
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user))
-    } else {
+/**
+ * Инициализация: восстанавливаем пользователя из localStorage
+ */
+const initializeUser = () => {
+  const storedUser = localStorage.getItem('user')
+  if (storedUser) {
+    try {
+      user = JSON.parse(storedUser)
+    } catch (e) {
+      console.error('Failed to parse user from localStorage', e)
       localStorage.removeItem('user')
     }
   }
+}
 
-  getUser(): User | null {
-    return this.user
-  }
+// Инициализируем при загрузке модуля
+initializeUser()
 
-  isAuthenticated(): boolean {
-    return this.user !== null && !!localStorage.getItem('token')
-  }
-
-  isAdmin(): boolean {
-    return this.user?.role === 'ADMIN'
-  }
-
-  logout() {
-    this.setUser(null)
-    localStorage.removeItem('token')
+/**
+ * Устанавливает пользователя в хранилище
+ */
+export const setUser = (newUser: User | null) => {
+  user = newUser
+  if (newUser) {
+    localStorage.setItem('user', JSON.stringify(newUser))
+  } else {
+    localStorage.removeItem('user')
   }
 }
 
-export const authStore = new AuthStore()
+/**
+ * Получает текущего пользователя
+ */
+export const getUser = (): User | null => {
+  return user
+}
+
+/**
+ * Проверяет, авторизован ли пользователь
+ */
+export const isAuthenticated = (): boolean => {
+  return user !== null && !!localStorage.getItem('token')
+}
+
+/**
+ * Проверяет, является ли пользователь администратором
+ */
+export const isAdmin = (): boolean => {
+  return user?.role === 'ADMIN'
+}
+
+/**
+ * Выход из системы
+ */
+export const logout = () => {
+  setUser(null)
+  localStorage.removeItem('token')
+}
+
+/**
+ * Объект с функциями для обратной совместимости
+ */
+export const authStore = {
+  setUser,
+  getUser,
+  isAuthenticated,
+  isAdmin,
+  logout,
+}

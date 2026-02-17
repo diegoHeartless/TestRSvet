@@ -4,6 +4,17 @@ import { categoriesApi } from '../api/categories'
 import { CategoryCreateRequest, CategoryUpdateRequest } from '../types/category'
 
 /**
+ * Тип для ошибок API
+ */
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
+
+/**
  * Хук для работы с категориями
  */
 export const useCategories = () => {
@@ -30,8 +41,9 @@ export const useCreateCategory = () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       message.success('Категория успешно создана')
     },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.message || 'Ошибка при создании категории'
+    onError: (error: unknown) => {
+      const apiError = error as ApiError
+      const errorMessage = apiError.response?.data?.message || 'Ошибка при создании категории'
       message.error(errorMessage)
     },
   })
@@ -43,13 +55,14 @@ export const useUpdateCategory = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: CategoryUpdateRequest }) =>
       categoriesApi.update(id, data),
-    onSuccess: (_, variables) => {
+    onSuccess: (_data: unknown, variables: { id: number; data: CategoryUpdateRequest }) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['category', variables.id] })
       message.success('Категория успешно обновлена')
     },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.message || 'Ошибка при обновлении категории'
+    onError: (error: unknown) => {
+      const apiError = error as ApiError
+      const errorMessage = apiError.response?.data?.message || 'Ошибка при обновлении категории'
       message.error(errorMessage)
     },
   })
@@ -65,8 +78,9 @@ export const useDeleteCategory = () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       message.success('Категория успешно удалена')
     },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.message || 'Ошибка при удалении категории'
+    onError: (error: unknown) => {
+      const apiError = error as ApiError
+      const errorMessage = apiError.response?.data?.message || 'Ошибка при удалении категории'
       message.error(errorMessage)
     },
   })
