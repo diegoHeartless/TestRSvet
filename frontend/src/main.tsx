@@ -1,5 +1,5 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from 'antd'
 import ruRU from 'antd/locale/ru_RU'
@@ -15,12 +15,17 @@ const queryClient = new QueryClient({
   },
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  throw new Error('Root element not found')
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ConfigProvider locale={ruRU}>
         <App />
       </ConfigProvider>
     </QueryClientProvider>
-  </React.StrictMode>,
+  </StrictMode>,
 )
