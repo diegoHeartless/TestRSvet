@@ -43,12 +43,13 @@ const CategoryList = () => {
       width: 180,
       render: (date: string) => new Date(date).toLocaleString('ru-RU'),
     },
-    ...(isAdmin
+        ...(isAdmin
       ? [
           {
             title: 'Действия',
             key: 'actions',
-            width: 120,
+            width: 180,
+            fixed: 'right' as const,
             render: (_: any, record: Category) => (
               <Space>
                 <Button
@@ -90,6 +91,7 @@ const CategoryList = () => {
         loading={isLoading}
         rowKey="id"
         pagination={{ pageSize: 10 }}
+        scroll={{ x: 'max-content' }}
       />
     </Card>
   )
