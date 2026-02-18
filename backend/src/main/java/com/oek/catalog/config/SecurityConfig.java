@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/webjars/**").permitAll()
                         .requestMatchers("/api/files/products/upload").hasRole("ADMIN") // Загрузка только для ADMIN
                         .requestMatchers("/api/files/products/**").permitAll() // Публичный доступ к изображениям продуктов
                         .requestMatchers("/api/categories/**").hasAnyRole("USER", "ADMIN")

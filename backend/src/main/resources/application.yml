@@ -30,6 +30,7 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework  # для корректной работы за reverse proxy
 
 jwt:
   secret: ${JWT_SECRET:your-secret-key-change-in-production-min-256-bits}
